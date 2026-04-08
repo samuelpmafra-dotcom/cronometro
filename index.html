@@ -28,15 +28,30 @@
   .card-title{font-size:.68rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
   .card-title::before{content:'';width:3px;height:13px;background:var(--accent);border-radius:2px;flex-shrink:0;}
 
-  /* CRONÔMETRO */
-  .status-bar{display:flex;align-items:center;justify-content:center;gap:6px;font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
+  /* STATUS */
+  .status-bar{display:flex;align-items:center;justify-content:center;gap:6px;font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
   .dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:all .3s;}
   .dot.on{background:var(--accent);box-shadow:0 0 8px var(--accent);animation:blink 1s infinite;}
   @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-  .timer-display{font-family:var(--mono);font-size:3.6rem;color:var(--accent);text-align:center;letter-spacing:.04em;padding:10px 0 4px;text-shadow:0 0 32px rgba(0,229,160,.42);line-height:1;transition:color .2s;}
-  .timer-display.stopped{color:var(--muted);text-shadow:none;}
-  .timer-min{text-align:center;font-family:var(--mono);font-size:1rem;color:var(--blue);letter-spacing:.08em;margin-bottom:3px;}
-  .timer-label{text-align:center;font-size:.62rem;color:var(--muted);letter-spacing:.2em;text-transform:uppercase;margin-bottom:16px;}
+
+  /* DOIS CRONÔMETROS */
+  .timer-block{margin-bottom:12px;}
+  .timer-block-label{font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;text-align:center;margin-bottom:2px;}
+  .timer-block-label.lbl-main{color:var(--muted);}
+  .timer-block-label.lbl-lap{color:var(--blue);}
+
+  .timer-display{font-family:var(--mono);font-size:3rem;text-align:center;letter-spacing:.04em;padding:6px 0 2px;line-height:1;transition:color .2s;}
+  .timer-display.main-disp{color:var(--accent);text-shadow:0 0 28px rgba(0,229,160,.38);}
+  .timer-display.lap-disp{color:var(--blue);font-size:2.2rem;text-shadow:0 0 22px rgba(59,158,255,.32);}
+  .timer-display.stopped{color:var(--muted) !important;text-shadow:none !important;}
+
+  .timer-min{text-align:center;font-family:var(--mono);font-size:.85rem;letter-spacing:.08em;margin-bottom:2px;}
+  .timer-min.main-min{color:var(--accent);}
+  .timer-min.lap-min{color:var(--blue);}
+  .timer-label{text-align:center;font-size:.58rem;color:var(--muted);letter-spacing:.2em;text-transform:uppercase;margin-bottom:10px;}
+
+  .divider-lap{border:none;border-top:1px dashed rgba(59,158,255,.2);margin:10px 0;}
+
   .btn-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;}
   .btn{font-family:var(--sans);font-weight:700;font-size:.85rem;letter-spacing:.1em;text-transform:uppercase;padding:11px 8px;border-radius:8px;border:none;cursor:pointer;transition:all .15s;}
   .btn-start{background:var(--accent);color:#0b0d12;box-shadow:0 0 14px rgba(0,229,160,.2);}
@@ -128,13 +143,30 @@
   <!-- COLUNA ESQUERDA: CRONÔMETRO -->
   <div class="card">
     <div class="card-title">Cronômetro</div>
+
     <div class="status-bar">
       <div class="dot" id="statusDot"></div>
       <span id="statusTxt">Parado</span>
     </div>
-    <div class="timer-display stopped" id="timerDisplay">00:00.000</div>
-    <div class="timer-min" id="timerMin">0.000 min</div>
+
+    <!-- CRONÔMETRO PRINCIPAL (contínuo) -->
+    <div class="timer-block">
+      <div class="timer-block-label lbl-main">▲ Tempo total acumulado</div>
+      <div class="timer-display main-disp stopped" id="timerDisplayMain">00:00.000</div>
+      <div class="timer-min main-min" id="timerMinMain">0.000 min</div>
+    </div>
+
+    <div class="divider-lap"></div>
+
+    <!-- CRONÔMETRO LAP (reseta a cada registro) -->
+    <div class="timer-block">
+      <div class="timer-block-label lbl-lap">↺ Intervalo entre registros</div>
+      <div class="timer-display lap-disp stopped" id="timerDisplayLap">00:00.000</div>
+      <div class="timer-min lap-min" id="timerMinLap">0.000 min</div>
+    </div>
+
     <div class="timer-label">mm : ss . ms &nbsp;|&nbsp; minutos decimais</div>
+
     <div class="btn-row">
       <button class="btn btn-start" onclick="iniciar()">&#9654; Iniciar</button>
       <button class="btn btn-stop"  onclick="parar()">&#9609; Parar</button>
@@ -243,58 +275,83 @@
 <script>
 // ── ESTADO ───────────────────────────────────────────────────────────────────
 var NUM_COLS = 6;
-var colunas = [[], [], [], [], [], []]; // 6 colunas independentes
-var freqs   = [1, 1, 1, 1, 1, 1];      // frequências persistentes por coluna
-var tempoInicial = null;
+var colunas = [[], [], [], [], [], []];
+var freqs   = [1, 1, 1, 1, 1, 1];
 var rodando = false;
 var rafId = null;
-var tempoAtualMin = 0;
 
-var COR_CLASSE = ['td-1','td-2','td-3','td-4','td-5','td-6'];
+// Cronômetro PRINCIPAL — tempo total acumulado (nunca reseta com registro)
+var mainInicio = null;       // performance.now() no momento do start
+var mainOffset = 0;          // ms acumulados antes do último start (para pausa)
+var mainAtualMin = 0;
+
+// Cronômetro LAP — reseta a cada registro
+var lapInicio = null;        // performance.now() no momento do start ou último registro
+var lapOffset = 0;           // ms acumulados antes do último start (para pausa)
+var lapAtualMin = 0;
+
+var COR_CLASSE   = ['td-1','td-2','td-3','td-4','td-5','td-6'];
 var BADGE_CLASSE = ['cb-1','cb-2','cb-3','cb-4','cb-5','cb-6'];
 
 // ── CRONÔMETRO ───────────────────────────────────────────────────────────────
 function iniciar() {
   if (rodando) return;
-  tempoInicial = performance.now() - (tempoAtualMin * 60 * 1000);
+  var agora = performance.now();
+  mainInicio = agora;
+  lapInicio  = agora;
   rodando = true;
   document.getElementById('statusDot').classList.add('on');
   document.getElementById('statusTxt').textContent = 'Rodando';
-  document.getElementById('timerDisplay').classList.remove('stopped');
+  document.getElementById('timerDisplayMain').classList.remove('stopped');
+  document.getElementById('timerDisplayLap').classList.remove('stopped');
   loop();
 }
 
 function parar() {
   if (!rodando) return;
+  var agora = performance.now();
+  // salva os offsets para retomar de onde parou
+  mainOffset += agora - mainInicio;
+  lapOffset  += agora - lapInicio;
   rodando = false;
   cancelAnimationFrame(rafId);
   document.getElementById('statusDot').classList.remove('on');
   document.getElementById('statusTxt').textContent = 'Parado';
-  document.getElementById('timerDisplay').classList.add('stopped');
+  document.getElementById('timerDisplayMain').classList.add('stopped');
+  document.getElementById('timerDisplayLap').classList.add('stopped');
 }
 
 function resetar() {
   parar();
-  tempoInicial = null;
-  tempoAtualMin = 0;
-  renderTimer(0);
+  mainInicio = null; mainOffset = 0; mainAtualMin = 0;
+  lapInicio  = null; lapOffset  = 0; lapAtualMin  = 0;
+  renderTimer(0, 0);
 }
 
 function loop() {
   if (!rodando) return;
-  var elapsed = performance.now() - tempoInicial;
-  tempoAtualMin = elapsed / 1000 / 60;
-  renderTimer(elapsed);
+  var agora = performance.now();
+  var mainMs = mainOffset + (agora - mainInicio);
+  var lapMs  = lapOffset  + (agora - lapInicio);
+  mainAtualMin = mainMs / 1000 / 60;
+  lapAtualMin  = lapMs  / 1000 / 60;
+  renderTimer(mainMs, lapMs);
   rafId = requestAnimationFrame(loop);
 }
 
-function renderTimer(ms) {
+function renderTimer(mainMs, lapMs) {
+  document.getElementById('timerDisplayMain').textContent = msToDisplay(mainMs);
+  document.getElementById('timerMinMain').textContent     = (mainMs/1000/60).toFixed(3)+' min';
+  document.getElementById('timerDisplayLap').textContent  = msToDisplay(lapMs);
+  document.getElementById('timerMinLap').textContent      = (lapMs/1000/60).toFixed(3)+' min';
+}
+
+function msToDisplay(ms) {
   var totalSeg = ms / 1000;
-  var m = Math.floor(totalSeg / 60);
-  var s = Math.floor(totalSeg % 60);
+  var m  = Math.floor(totalSeg / 60);
+  var s  = Math.floor(totalSeg % 60);
   var ms3 = Math.floor(ms % 1000);
-  document.getElementById('timerDisplay').textContent = pad2(m)+':'+pad2(s)+'.'+pad3(ms3);
-  document.getElementById('timerMin').textContent = tempoAtualMin.toFixed(3)+' min';
+  return pad2(m)+':'+pad2(s)+'.'+pad3(ms3);
 }
 
 function pad2(n){ return String(n).padStart(2,'0'); }
@@ -302,12 +359,19 @@ function pad3(n){ return String(n).padStart(3,'0'); }
 
 // ── REGISTRAR ────────────────────────────────────────────────────────────────
 function registrar(idx) {
-  if (tempoAtualMin <= 0) { toast('Inicie o cronômetro antes de registrar'); return; }
-  var val = parseFloat(tempoAtualMin.toFixed(3));
+  if (lapAtualMin <= 0) { toast('Inicie o cronômetro antes de registrar'); return; }
+  var val = parseFloat(lapAtualMin.toFixed(3));
   colunas[idx].push(val);
-  // Reseta cronômetro (equivalente a TempoInicial = Timer)
-  tempoInicial = performance.now();
-  tempoAtualMin = 0;
+
+  // Reseta SOMENTE o cronômetro LAP
+  if (rodando) {
+    lapInicio = performance.now();
+    lapOffset = 0;
+  } else {
+    lapOffset = 0;
+  }
+  lapAtualMin = 0;
+
   renderTabela();
   atualizar();
   toast('Registrado '+val.toFixed(3)+' min → REG.0'+(idx+1));
@@ -316,14 +380,10 @@ function registrar(idx) {
 // ── LIMPAR ───────────────────────────────────────────────────────────────────
 function limpar() {
   colunas = [[], [], [], [], [], []];
-  rodando = false;
-  cancelAnimationFrame(rafId);
-  tempoInicial = null;
-  tempoAtualMin = 0;
-  document.getElementById('statusDot').classList.remove('on');
-  document.getElementById('statusTxt').textContent = 'Parado';
-  document.getElementById('timerDisplay').classList.add('stopped');
-  renderTimer(0);
+  parar();
+  mainInicio = null; mainOffset = 0; mainAtualMin = 0;
+  lapInicio  = null; lapOffset  = 0; lapAtualMin  = 0;
+  renderTimer(0, 0);
   renderTabela();
   atualizar();
   toast('Registros apagados');
@@ -349,10 +409,8 @@ function renderTabela() {
   tbody.innerHTML = html;
 }
 
-// ── TABELA DE FREQUÊNCIAS (renderiza no card de config) ───────────────────────
-function getFreq(idx) {
-  return freqs[idx] || 1;
-}
+// ── TABELA DE FREQUÊNCIAS ─────────────────────────────────────────────────────
+function getFreq(idx) { return freqs[idx] || 1; }
 
 function setFreq(idx, val) {
   var v = parseFloat(val);
@@ -360,29 +418,23 @@ function setFreq(idx, val) {
   atualizar();
 }
 
-// Fórmula única para qualquer quantidade de medições:
-// valor = (soma / quantidade) / frequência  →  média ÷ frequência
 function calcularValorColuna(idx) {
   var n = colunas[idx].length;
   if (n === 0) return 0;
   var soma  = colunas[idx].reduce(function(a,b){ return a+b; }, 0);
-  var media = soma / n;
-  return media / getFreq(idx);
+  return (soma / n) / getFreq(idx);
 }
 
 function renderFreqTable() {
   var tbody = document.getElementById('freqTbody');
-  var tolPct   = parseFloat(document.getElementById('tolerancia').value) || 0;
-  var fatorTol = 1 + (tolPct / 100);
   var html = '';
   for (var i = 0; i < NUM_COLS; i++) {
-    var n        = colunas[i].length;
-    var freq     = getFreq(i);
-    var valor    = calcularValorColuna(i);
-    var soma     = colunas[i].reduce(function(a,b){ return a+b; }, 0);
-    var media    = n > 0 ? (soma / n).toFixed(3) : '—';
+    var n     = colunas[i].length;
+    var freq  = getFreq(i);
+    var valor = calcularValorColuna(i);
+    var soma  = colunas[i].reduce(function(a,b){ return a+b; }, 0);
+    var media = n > 0 ? (soma / n).toFixed(3) : '—';
     var valorStr = valor > 0 ? valor.toFixed(3) : '—';
-    // parcial não usado mais
     html += '<tr>'
       + '<td><span class="col-badge '+BADGE_CLASSE[i]+'">REG.0'+(i+1)+'</span></td>'
       + '<td><input class="freq-input" id="freq_'+i+'" type="number" value="'+freq+'" min="0.1" step="any" oninput="setFreq('+i+', this.value)"></td>'
@@ -395,30 +447,18 @@ function renderFreqTable() {
 }
 
 // ── CALCULAR STATS ────────────────────────────────────────────────────────────
-// Tempo Total  = soma bruta de TODOS os tempos de todas as colunas
-// Tempo Padrão = soma dos valores representativos de cada coluna × fator tolerância
-//   valor representativo: n<=2 → média; n>2 → soma÷frequência
 function atualizar() {
-  var tolPct   = parseFloat(document.getElementById('tolerancia').value) || 0;
-  var fatorTol = 1 + (tolPct / 100);
-
-  var totalRegs = 0;
-  var somaTotal = 0;
-  var somaParciais = 0;
+  var tolPct = parseFloat(document.getElementById('tolerancia').value) || 0;
+  var totalRegs = 0, somaTotal = 0, somaParciais = 0;
 
   for (var i = 0; i < NUM_COLS; i++) {
     var n    = colunas[i].length;
     var soma = colunas[i].reduce(function(a,b){ return a+b; }, 0);
     totalRegs += n;
     somaTotal += soma;
-    if (n > 0) {
-      somaParciais += calcularValorColuna(i);
-    }
+    if (n > 0) somaParciais += calcularValorColuna(i);
   }
 
-  // variáveis calculadas abaixo após somaParciais
-
-  // Tempo de Ciclo = soma de (média de cada reg ÷ frequência de cada reg)
   var tempoCiclo    = somaParciais;
   var pecasHoraCalc = tempoCiclo > 0 ? 60 / tempoCiclo : 0;
   var pecasDiaCalc  = pecasHoraCalc * 8.8;
@@ -445,12 +485,10 @@ function exportarCSV() {
   csv += 'Tolerancia %:;'+tol+'\n';
   csv += 'Data:;'+new Date().toLocaleString('pt-BR')+'\n\n';
 
-  // Linha de frequências
-  csv += 'Frequencia:';
-  for (var i = 0; i < NUM_COLS; i++) csv += ';'+getFreq(i);
-  csv += '\n\n';
+  var freqRow = 'Frequencia:';
+  for (var i = 0; i < NUM_COLS; i++) freqRow += ';'+getFreq(i);
+  csv += freqRow + '\n\n';
 
-  // Cabeçalho tabela
   csv += 'Nr';
   for (var i = 0; i < NUM_COLS; i++) csv += ';REG.0'+(i+1)+' (min)';
   csv += '\n';
@@ -467,8 +505,7 @@ function exportarCSV() {
   for (var i = 0; i < NUM_COLS; i++) {
     csv += ';'+colunas[i].reduce(function(a,b){return a+b;},0).toFixed(3);
   }
-  csv += '\n';
-  csv += '\nTempo Total:;'+document.getElementById('statTotal').textContent+'\n';
+  csv += '\n\nTempo Total:;'+document.getElementById('statTotal').textContent+'\n';
   csv += 'Tempo Padrao:;'+document.getElementById('statPadrao').textContent+'\n';
   csv += 'Pecas/Hora:;'+document.getElementById('statPecasH').textContent+'\n';
   csv += 'Pecas/Dia:;'+document.getElementById('statPecasD').textContent+'\n';
