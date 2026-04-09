@@ -297,6 +297,9 @@
 </head>
 <body>
 
+<!-- TABS -->#9888; TOKEN NÃO CONFIGURADO — Abra este arquivo num editor de texto, encontre <span style="background:rgba(0,0,0,.2);padding:2px 8px;border-radius:4px;font-family:monospace;font-size:.95rem;">GH_TOKEN='SEU_TOKEN_AQUI'</span> e substitua pelo seu token do GitHub
+  <button onclick="document.getElementById('tokenBanner').style.display='none'" style="background:rgba(0,0,0,.25);border:none;color:#fff;cursor:pointer;padding:4px 10px;border-radius:6px;font-family:inherit;font-weight:700;font-size:.85rem;margin-left:8px;">✕ Fechar</button>
+</div>
 <!-- TABS -->
 <div class="app-tabs">
   <div class="app-tab active" onclick="mudarTab('cronometro')">&#9201; Cronômetro</div>
@@ -547,6 +550,7 @@
           <button class="btn-sm btn-pdf" onclick="exportarPDF()">PDF</button>
           <button class="btn-sm btn-share" onclick="toggleShare()">&#8599; Enviar</button>
           <button class="btn-sm btn-save-gh" onclick="salvarNoGitHub()">&#9729; Salvar</button>
+          <button class="btn-sm" id="btnTokenStatus" onclick="abrirTokenSetup()" style="background:transparent;color:var(--red);border:1px solid rgba(242,92,120,.4);">&#9888; Configurar Token</button>
         </div>
       </div>
       <div class="share-panel" id="sharePanel">
@@ -606,7 +610,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // ── GITHUB CONFIG ─────────────────────────────────────────────────────────────
-var GH_TOKEN='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';
+var GH_TOKEN=localStorage.getItem('crono_gh_token')||'';
 var GH_OWNER='samuelpmafra-ponto-com';
 var GH_REPO='cronoanalise-dados';
 var GH_FILE='historico.json';
@@ -1008,6 +1012,7 @@ function montarEstudo(){
 
 // ── GITHUB: SALVAR ────────────────────────────────────────────────────────────
 function salvarNoGitHub(){
+  if(!GH_TOKEN){abrirTokenSetup();toast('Configure o token primeiro!');return;}
   if(!validarAnalista()){toast('Informe o cronoanalista!');return;}
   var ml=Math.max.apply(null,cols.map(function(c){return c.length;}));
   if(!ml){toast('Nenhum dado para salvar');return;}
@@ -1038,6 +1043,7 @@ function salvarNoGitHub(){
 
 // ── GITHUB: CARREGAR HISTÓRICO ────────────────────────────────────────────────
 function carregarHistorico(){
+  if(!GH_TOKEN){document.getElementById('histList').innerHTML='<div class="hist-empty">Configure o token do GitHub para acessar o histórico</div>';return;}
   document.getElementById('histList').innerHTML='<div class="hist-loading">Carregando...</div>';
   fetch(GH_API,{headers:{'Authorization':'Bearer '+GH_TOKEN,'Accept':'application/vnd.github+json'}})
     .then(function(r){return r.json();})
@@ -1306,7 +1312,30 @@ function exportarPDF(){
     +'<div class="grid"><div class="box"><span class="box-lbl">Registros</span><div class="box-val" style="color:#c9d3ef;">'+h.regs+'</div></div><div class="box"><span class="box-lbl">Tempo Total</span><div class="box-val" style="color:#3b9eff;">'+h.total+'</div></div><div class="box"><span class="box-lbl">Ciclo</span><div class="box-val" style="color:#ff7043;">'+h.ciclo+'</div></div><div class="box"><span class="box-lbl">Peças/Hora</span><div class="box-val" style="color:#00e5a0;">'+h.ph+'</div></div><div class="box"><span class="box-lbl">Peças/Dia (8.8h)</span><div class="box-val" style="color:#3b9eff;">'+h.pd+'</div></div><div class="box"><span class="box-lbl">Tolerância</span><div class="box-val" style="color:#c9d3ef;">'+h.tol+'</div></div></div>'
     +(ml>0?'<div class="sec" style="margin-bottom:10px;">Tabela de Registros</div><table><thead><tr>'+thC+'</tr></thead><tbody>'+tRows+'<tr style="border-top:2px solid #1d2235;">'+mC+'</tr><tr>'+dpC+'</tr><tr>'+cvC+'</tr></tbody></table>':'<p style="color:#5a6a8a;font-size:.8rem;text-transform:uppercase;margin-bottom:16px;">Nenhum registro coletado</p>')
     +obsBloco
-    +'<div class="footer">Gerado por Cronômetro Industrial &middot; '+xe(h.analista)+' &middot; '+h.data+'</div></body></html>';
+    +'<div class="footer">Gerado por Cronômetro Industrial &middot; '+xe(h.analista)+' &middot; '+h.data+'</div>
+<!-- MODAL TOKEN -->
+<div id="tokenSetupBg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#11141c;border:1px solid #1d2235;border-radius:14px;padding:28px 24px;width:100%;max-width:420px;">
+    <div style="font-size:1.1rem;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:#00e5a0;margin-bottom:6px;">⚙ Configurar Token</div>
+    <div style="font-size:.68rem;color:#5a6a8a;letter-spacing:.1em;margin-bottom:20px;line-height:1.6;">
+      Para salvar e consultar o histórico, informe seu token do GitHub.<br>
+      O token fica salvo <strong style="color:#c9d3ef;">apenas neste navegador</strong> — nunca em nenhum arquivo ou servidor.
+    </div>
+    <div style="font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;color:#5a6a8a;margin-bottom:6px;">Token do GitHub (github_pat_...)</div>
+    <input type="password" id="tokenInput" placeholder="Cole seu token aqui..."
+      style="width:100%;background:rgba(255,255,255,.05);border:1px solid #1d2235;border-radius:7px;color:#c9d3ef;font-family:monospace;font-size:.9rem;padding:11px 12px;outline:none;margin-bottom:6px;transition:border-color .15s;"
+      onfocus="this.style.borderColor='#3b9eff'" onblur="this.style.borderColor='#1d2235'">
+    <div style="font-size:.6rem;color:#5a6a8a;margin-bottom:16px;letter-spacing:.08em;">
+      Como gerar: GitHub → Configurações → Configurações do desenvolvedor → Tokens de acesso pessoal → Fichas de grão fino → Gerar novo token → selecionar repositório <strong style="color:#c9d3ef;">cronoanalise-dados</strong> → Contents: Read and write
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <button onclick="fecharTokenSetup()" style="background:transparent;color:#5a6a8a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.82rem;letter-spacing:.1em;text-transform:uppercase;padding:12px;border-radius:8px;border:1px solid #1d2235;cursor:pointer;">Agora não</button>
+      <button onclick="salvarToken()" style="background:#00e5a0;color:#0b0d12;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.82rem;letter-spacing:.1em;text-transform:uppercase;padding:12px;border-radius:8px;border:none;cursor:pointer;">✓ Salvar Token</button>
+    </div>
+  </div>
+</div>
+
+</body></html>';
   var w=window.open('','_blank','width=960,height=720');
   if(!w){toast('Permita pop-ups para gerar o PDF');return;}
   w.document.open();w.document.write(html);w.document.close();
@@ -1318,9 +1347,76 @@ function slug(s){return(s||'x').toLowerCase().replace(/\s+/g,'_').replace(/[^a-z
 var _tt;
 function toast(msg){var el=document.getElementById('toastEl');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(function(){el.classList.remove('show');},2400);}
 
+
+// ── TOKEN SETUP ───────────────────────────────────────────────────────────────
+function abrirTokenSetup(){
+  document.getElementById('tokenSetupBg').style.display='flex';
+  setTimeout(function(){document.getElementById('tokenInput').focus();},100);
+}
+function fecharTokenSetup(){
+  document.getElementById('tokenSetupBg').style.display='none';
+}
+function salvarToken(){
+  var t=document.getElementById('tokenInput').value.trim();
+  if(!t){toast('Cole o token antes de salvar');return;}
+  localStorage.setItem('crono_gh_token',t);
+  GH_TOKEN=t;
+  fecharTokenSetup();
+  document.getElementById('tokenInput').value='';
+  toast('✓ Token salvo com sucesso!');
+  // atualiza badge no botão
+  atualizarBtnToken();
+}
+function limparToken(){
+  if(!confirm('Remover o token salvo?'))return;
+  localStorage.removeItem('crono_gh_token');
+  GH_TOKEN='';
+  atualizarBtnToken();
+  toast('Token removido');
+}
+function atualizarBtnToken(){
+  var btn=document.getElementById('btnTokenStatus');
+  if(!btn)return;
+  if(GH_TOKEN){
+    btn.textContent='⚙ Token ativo';
+    btn.style.color='var(--accent)';
+    btn.style.borderColor='rgba(0,229,160,.3)';
+  } else {
+    btn.textContent='⚠ Configurar Token';
+    btn.style.color='var(--red)';
+    btn.style.borderColor='rgba(242,92,120,.4)';
+  }
+}
+// Se não tem token, abre setup automaticamente
+
 // INIT
+atualizarBtnToken();
+if(!GH_TOKEN){setTimeout(function(){abrirTokenSetup();},800);}
 selecionarTipo('manual');
 renderReg();renderCab();renderFreq();renderTolIndTable();atualizar();
 </script>
+
+<!-- MODAL TOKEN -->
+<div id="tokenSetupBg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#11141c;border:1px solid #1d2235;border-radius:14px;padding:28px 24px;width:100%;max-width:420px;">
+    <div style="font-size:1.1rem;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:#00e5a0;margin-bottom:6px;">⚙ Configurar Token</div>
+    <div style="font-size:.68rem;color:#5a6a8a;letter-spacing:.1em;margin-bottom:20px;line-height:1.6;">
+      Para salvar e consultar o histórico, informe seu token do GitHub.<br>
+      O token fica salvo <strong style="color:#c9d3ef;">apenas neste navegador</strong> — nunca em nenhum arquivo ou servidor.
+    </div>
+    <div style="font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;color:#5a6a8a;margin-bottom:6px;">Token do GitHub (github_pat_...)</div>
+    <input type="password" id="tokenInput" placeholder="Cole seu token aqui..."
+      style="width:100%;background:rgba(255,255,255,.05);border:1px solid #1d2235;border-radius:7px;color:#c9d3ef;font-family:monospace;font-size:.9rem;padding:11px 12px;outline:none;margin-bottom:6px;transition:border-color .15s;"
+      onfocus="this.style.borderColor='#3b9eff'" onblur="this.style.borderColor='#1d2235'">
+    <div style="font-size:.6rem;color:#5a6a8a;margin-bottom:16px;letter-spacing:.08em;">
+      Como gerar: GitHub → Configurações → Configurações do desenvolvedor → Tokens de acesso pessoal → Fichas de grão fino → Gerar novo token → selecionar repositório <strong style="color:#c9d3ef;">cronoanalise-dados</strong> → Contents: Read and write
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <button onclick="fecharTokenSetup()" style="background:transparent;color:#5a6a8a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.82rem;letter-spacing:.1em;text-transform:uppercase;padding:12px;border-radius:8px;border:1px solid #1d2235;cursor:pointer;">Agora não</button>
+      <button onclick="salvarToken()" style="background:#00e5a0;color:#0b0d12;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.82rem;letter-spacing:.1em;text-transform:uppercase;padding:12px;border-radius:8px;border:none;cursor:pointer;">✓ Salvar Token</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
