@@ -542,7 +542,6 @@ function abrirCam(facing){
   navigator.mediaDevices.getUserMedia({video: { facingMode: facing, width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 } }}},audio:false})
     .then(function(stream){
       camStream=stream;
-camStream.getAudioTracks().forEach(function(t){t.stop();t.enabled=false;});
       var vid=document.getElementById('camVideo');vid.srcObject=stream;vid.style.display='block';
       document.getElementById('camPlaceholder').style.display='none';
       document.getElementById('camCtrlOff').style.display='none';
@@ -566,9 +565,10 @@ function fecharCamStream(){if(camStream){camStream.getTracks().forEach(function(
 function iniciarGravacao(){
   if(!camStream){toast('Abra a câmera primeiro');return;}
   recChunks=[];
-  var ts=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4'],mime='';
+  var ts=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'],mime='';
   for(var i=0;i<ts.length;i++){if(MediaRecorder.isTypeSupported(ts[i])){mime=ts[i];break;}}
-  try{mediaRecorder=new MediaRecorder(camStream,mime?{mimeType:mime}:{});}catch(e){mediaRecorder=new MediaRecorder(camStream);}
+  var videoStream=new MediaStream(camStream.getVideoTracks());
+  try{mediaRecorder=new MediaRecorder(videoStream,mime?{mimeType:mime}:{});}catch(e){mediaRecorder=new MediaRecorder(videoStream);}
   mediaRecorder.ondataavailable=function(e){if(e.data&&e.data.size>0)recChunks.push(e.data);};
   mediaRecorder.onstop=function(){salvarGravacao();};
   mediaRecorder.start(500);
