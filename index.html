@@ -297,11 +297,6 @@
 </head>
 <body>
 
-<!-- BANNER TOKEN -->
-<div id="tokenBanner" style="background:#f25c78;color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:900;letter-spacing:.15em;text-transform:uppercase;text-align:center;padding:14px 16px;position:sticky;top:0;z-index:999;display:flex;align-items:center;justify-content:center;gap:10px;">
-  <!-- TABS -->#9888; TOKEN NÃO CONFIGURADO — Abra este arquivo num editor de texto, encontre <span style="background:rgba(0,0,0,.2);padding:2px 8px;border-radius:4px;font-family:monospace;font-size:.95rem;">GH_TOKEN='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'</span> e substitua pelo seu token do GitHub
-  <button onclick="document.getElementById('tokenBanner').style.display='none'" style="background:rgba(0,0,0,.25);border:none;color:#fff;cursor:pointer;padding:4px 10px;border-radius:6px;font-family:inherit;font-weight:700;font-size:.85rem;margin-left:8px;">✕ Fechar</button>
-</div>
 <!-- TABS -->
 <div class="app-tabs">
   <div class="app-tab active" onclick="mudarTab('cronometro')">&#9201; Cronômetro</div>
@@ -611,7 +606,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // ── GITHUB CONFIG ─────────────────────────────────────────────────────────────
-var GH_TOKEN='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'; // ← COLE SEU TOKEN AQUI
+var GH_TOKEN='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';
 var GH_OWNER='samuelpmafra-ponto-com';
 var GH_REPO='cronoanalise-dados';
 var GH_FILE='historico.json';
@@ -1323,10 +1318,6 @@ function slug(s){return(s||'x').toLowerCase().replace(/\s+/g,'_').replace(/[^a-z
 var _tt;
 function toast(msg){var el=document.getElementById('toastEl');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(function(){el.classList.remove('show');},2400);}
 
-// Esconde banner se token foi configurado
-if(GH_TOKEN && GH_TOKEN!=='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'){
-  var b=document.getElementById('tokenBanner');if(b)b.style.display='none';
-}
 // INIT
 selecionarTipo('manual');
 renderReg();renderCab();renderFreq();renderTolIndTable();atualizar();
