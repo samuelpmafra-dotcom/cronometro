@@ -195,7 +195,8 @@
   .btn-del-all{background:transparent;color:var(--red);border:1px solid rgba(242,92,120,.3);}
   .btn-csv{background:transparent;color:var(--blue);border:1px solid rgba(59,158,255,.3);}
   .btn-xlsx{background:var(--accent);color:#0b0d12;font-weight:900;}
-  .btn-share{background:transparent;color:var(--accent);border:1px solid rgba(0,229,160,.3);}
+  .btn-pdf{background:transparent;color:var(--orange);border:1px solid rgba(255,112,67,.3);}
+  .btn-pdf:active{background:rgba(255,112,67,.08);}
   .sigma-row{display:flex;align-items:center;gap:6px;font-size:.68rem;color:var(--muted);}
   .sigma-row input{width:52px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:.85rem;padding:4px 7px;outline:none;}
   .sigma-row input:focus{border-color:var(--accent);}
@@ -235,6 +236,17 @@
     text-transform:uppercase;padding:10px 18px;border-radius:30px;
     opacity:0;transition:all .22s ease;pointer-events:none;z-index:400;white-space:nowrap;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+
+  /* REC PROGRESS */
+  #recProgressBar{transition:background .5s,width .9s linear;}
+  /* TOGGLE SWITCH */
+  .toggle-switch{position:relative;display:inline-block;flex-shrink:0;}
+  .toggle-switch input{position:absolute;opacity:0;width:0;height:0;}
+  .toggle-track{display:block;width:44px;height:24px;background:var(--border);border-radius:12px;cursor:pointer;transition:background .2s;position:relative;}
+  .toggle-switch input:checked + .toggle-track{background:var(--accent);}
+  .toggle-thumb{position:absolute;top:3px;left:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform .2s;display:block;}
+  .toggle-switch input:checked + .toggle-track .toggle-thumb{transform:translateX(20px);}
 </style>
 </head>
 <body>
@@ -318,6 +330,10 @@
         <video id="camVideo" autoplay playsinline muted style="display:none;"></video>
         <div class="rec-badge" id="recBadge"><div class="rec-dot"></div><span>REC</span></div>
         <div class="cam-timer-overlay" id="camTimerOverlay">00:00.000</div>
+        <!-- BARRA PROGRESSO GRAVAÇÃO -->
+        <div id="recProgressWrap" style="position:absolute;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,.1);display:none;">
+          <div id="recProgressBar" style="height:100%;width:0%;background:var(--accent);border-radius:0 2px 2px 0;transition:width .5s linear;"></div>
+        </div>
       </div>
 
       <!-- CONTROLES -->
@@ -327,15 +343,23 @@
       </div>
 
       <div id="camCtrlOn" style="display:none;">
+        <!-- TOGGLE AUTO-GRAVAR -->
+        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:10px;">
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <span style="font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text);">Gravar com o cronômetro</span>
+            <span style="font-size:.6rem;color:var(--muted);letter-spacing:.1em;">Inicia e para junto com o cronômetro</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="autoRecToggle">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+        </div>
         <div class="cam-controls-3" style="margin-bottom:8px;">
           <button class="btn-cam btn-cam-rec"      id="btnRec"    onclick="iniciarGravacao()">&#9679; Gravar</button>
           <button class="btn-cam btn-cam-stop-rec" id="btnStopRec" onclick="pararGravacao()" style="display:none;">&#9632; Parar</button>
           <button class="btn-cam btn-cam-flip"     onclick="virarCam()">&#8644; Virar</button>
           <button class="btn-cam btn-cam-close"    onclick="fecharCam()">&#10005; Fechar</button>
         </div>
-        <p style="font-size:.6rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;text-align:center;margin-bottom:8px;">
-          A gravação continua mesmo com o cronômetro rodando
-        </p>
       </div>
 
       <!-- GRAVAÇÕES SALVAS -->
@@ -409,6 +433,7 @@
           <button class="btn-sm btn-del-all" onclick="limpar()">&#128465;</button>
           <button class="btn-sm btn-csv"  onclick="exportarCSV()">CSV</button>
           <button class="btn-sm btn-xlsx" onclick="exportarXLSX()">Excel</button>
+          <button class="btn-sm btn-pdf"  onclick="exportarPDF()">PDF</button>
           <button class="btn-sm btn-share" onclick="toggleShare()">&#8599; Enviar</button>
         </div>
       </div>
@@ -419,6 +444,7 @@
           <button class="btn-sh" onclick="shareEmail()"><span class="sh-ico">&#9993;</span><span class="sh-lbl">E-mail</span><span class="sh-sub">Abre app de e-mail</span></button>
           <button class="btn-sh" onclick="exportarCSV();toast('CSV baixado!')"><span class="sh-ico">&#128196;</span><span class="sh-lbl">CSV</span><span class="sh-sub">Baixa arquivo</span></button>
           <button class="btn-sh" onclick="exportarXLSX();toast('Excel baixado!')"><span class="sh-ico">&#128202;</span><span class="sh-lbl">Excel</span><span class="sh-sub">Baixa arquivo</span></button>
+          <button class="btn-sh" onclick="exportarPDF()"><span class="sh-ico">&#128196;</span><span class="sh-lbl">PDF</span><span class="sh-sub">Relatório completo</span></button>
           <button class="btn-sh" onclick="copiarResumo()"><span class="sh-ico">&#128203;</span><span class="sh-lbl">Copiar</span><span class="sh-sub">Resumo em texto</span></button>
         </div>
       </div>
@@ -463,6 +489,7 @@ var recChunks=[];
 var gravacoes=[];
 var recStartTime=null;
 var recTimerRaf=null;
+var autoRec=false;
 
 // ── COLLAPSE ──────────────────────────────────────────────────────────────────
 function tog(id){
@@ -485,6 +512,10 @@ function updAllSum(){['crono','cam','cfg','res','reg'].forEach(updSum);}
 function totalRegs(){return cols.reduce(function(a,c){return a+c.length;},0);}
 
 // ── CÂMERA ────────────────────────────────────────────────────────────────────
+function toggleAutoRec(){
+  autoRec=document.getElementById('autoRecToggle').checked;
+  toast(autoRec?'Gravação automática ativada':'Gravação automática desativada');
+}
 function abrirCam(facing){
   camFacing=facing;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
@@ -553,6 +584,8 @@ function iniciarGravacao(){
   recStartTime=performance.now();
   document.getElementById('recBadge').classList.add('on');
   document.getElementById('camTimerOverlay').classList.add('on');
+  var pw=document.getElementById('recProgressWrap');if(pw)pw.style.display='block';
+  var pb=document.getElementById('recProgressBar');if(pb){pb.style.width='0%';}
   document.getElementById('btnRec').style.display='none';
   document.getElementById('btnStopRec').style.display='block';
   atualizarRecTimer();
@@ -560,11 +593,60 @@ function iniciarGravacao(){
   updSum('cam');
 }
 
+var REC_LIMITE_MS = 3 * 60 * 1000; // 3 minutos
+
 function atualizarRecTimer(){
   if(!mediaRecorder||mediaRecorder.state!=='recording')return;
   var elapsed=performance.now()-recStartTime;
-  document.getElementById('camTimerOverlay').textContent=ms2d(elapsed);
+  var restante=REC_LIMITE_MS-elapsed;
+
+  // atualiza overlay com tempo restante
+  var overlay=document.getElementById('camTimerOverlay');
+  if(restante<=30000){
+    overlay.style.color='#f9c74f';
+    overlay.style.borderColor='rgba(249,199,79,.5)';
+  }
+  if(restante<=10000){
+    overlay.style.color='#f25c78';
+    overlay.style.borderColor='rgba(242,92,120,.5)';
+  }
+  overlay.textContent=ms2d(elapsed)+' / 3:00';
+
+  // barra de progresso
+  var pct=Math.min(elapsed/REC_LIMITE_MS*100,100);
+  var bar=document.getElementById('recProgressBar');
+  if(bar) bar.style.width=pct+'%';
+
+  // atingiu limite: salva e reinicia automaticamente (não para o cronômetro)
+  if(elapsed>=REC_LIMITE_MS){
+    pararGravacaoSilenciosa();
+    // só reinicia se cronômetro ainda rodando e autoRec ligado, ou manualmente
+    if(rodando){
+      setTimeout(function(){
+        if(camStream) iniciarGravacao();
+      }, 300);
+      toast('Segmento salvo — nova gravação iniciada');
+    } else {
+      toast('Limite de 3 min atingido — gravação salva');
+    }
+    return;
+  }
+
   recTimerRaf=requestAnimationFrame(atualizarRecTimer);
+}
+
+// Para e salva sem alterar UI dos botões (usado no limite automático)
+function pararGravacaoSilenciosa(){
+  if(!mediaRecorder||mediaRecorder.state==='inactive')return;
+  cancelAnimationFrame(recTimerRaf);
+  mediaRecorder.stop();
+  document.getElementById('recBadge').classList.remove('on');
+  var overlay=document.getElementById('camTimerOverlay');
+  overlay.classList.remove('on');
+  overlay.style.color='';
+  overlay.style.borderColor='';
+  var bar=document.getElementById('recProgressBar');
+  if(bar) bar.style.width='0%';
 }
 
 function pararGravacao(){
@@ -572,7 +654,11 @@ function pararGravacao(){
   mediaRecorder.stop();
   cancelAnimationFrame(recTimerRaf);
   document.getElementById('recBadge').classList.remove('on');
-  document.getElementById('camTimerOverlay').classList.remove('on');
+  var overlay=document.getElementById('camTimerOverlay');
+  overlay.classList.remove('on');
+  overlay.style.color='';overlay.style.borderColor='';
+  var pw=document.getElementById('recProgressWrap');if(pw)pw.style.display='none';
+  var pb=document.getElementById('recProgressBar');if(pb)pb.style.width='0%';
   document.getElementById('btnRec').style.display='block';
   document.getElementById('btnStopRec').style.display='none';
   toast('Gravação salva!');
@@ -684,6 +770,7 @@ function iniciar(){
   if(rodando)return;
   var n=performance.now();mIni=n;lIni=n;
   rodando=true;
+  if(autoRec && camStream && (!mediaRecorder || mediaRecorder.state==='inactive')) iniciarGravacao();
   document.getElementById('statusDot').classList.add('on');
   document.getElementById('statusTxt').textContent='Rodando';
   ['dispMain','dispLap'].forEach(function(id){document.getElementById(id).classList.remove('stopped');});
@@ -694,6 +781,7 @@ function parar(){
   if(!rodando)return;
   var n=performance.now();mOff+=n-mIni;lOff+=n-lIni;
   rodando=false;cancelAnimationFrame(rafId);
+  if(autoRec && mediaRecorder && mediaRecorder.state==='recording') pararGravacao();
   document.getElementById('statusDot').classList.remove('on');
   document.getElementById('statusTxt').textContent='Parado';
   ['dispMain','dispLap'].forEach(function(id){document.getElementById(id).classList.add('stopped');});
@@ -886,6 +974,109 @@ function exportarXLSX(){
   toast('Excel exportado!');
 }
 
+function exportarPDF(){
+  var op=document.getElementById('nomeOp').value||'Operação';
+  var tol=document.getElementById('tolerancia').value;
+  var ml=Math.max.apply(null,cols.map(function(c){return c.length;}));
+  var sig=getSigma();
+  var st=cols.map(calcStats);
+  var agora=new Date().toLocaleString('pt-BR');
+
+  // monta HTML do relatório
+  var corBadge=['#a6e3a1','#3b9eff','#ff7043','#f25c78','#cba6f7','#f9e2af'];
+  var bgBadge=['rgba(166,227,161,.18)','rgba(59,158,255,.18)','rgba(255,112,67,.18)','rgba(242,92,120,.18)','rgba(203,166,247,.18)','rgba(249,226,175,.18)'];
+
+  // tabela de registros
+  var tabelaRows='';
+  for(var r=0;r<ml;r++){
+    tabelaRows+='<tr><td style="color:#888;font-size:11px;">'+(r+1)+'</td>';
+    for(var c=0;c<N;c++){
+      if(cols[c][r]===undefined){tabelaRows+='<td style="color:#ccc;">—</td>';}
+      else{
+        var v=cols[c][r];var cl=clsCel(v,st[c].media,st[c].dp,sig);
+        var bg=cl===2?'rgba(242,92,120,.15)':cl===1?'rgba(249,199,79,.15)':'transparent';
+        var fc=cl===2?'#f25c78':cl===1?'#f9c74f':corBadge[c];
+        var fl=cl===2?' ⚠':cl===1?' ~':'';
+        tabelaRows+='<td style="background:'+bg+';color:'+fc+';border-radius:4px;padding:4px 6px;font-size:11px;">'+v.toFixed(3)+fl+'</td>';
+      }
+    }
+    tabelaRows+='</tr>';
+  }
+
+  // cabeçalhos da tabela
+  var thCols='<th style="color:#888;font-size:10px;">#</th>';
+  for(var i=0;i<N;i++) thCols+='<th><span style="background:'+bgBadge[i]+';color:'+corBadge[i]+';padding:2px 7px;border-radius:4px;font-size:10px;font-family:monospace;">'+xe(nomes[i])+'</span></th>';
+
+  // linhas de desvio padrão
+  var dpCols='<td style="color:#888;font-size:10px;font-weight:700;">σ</td>';
+  var cvCols='<td style="color:#888;font-size:10px;font-weight:700;">CV%</td>';
+  var mediaCols='<td style="color:#888;font-size:10px;font-weight:700;">Média</td>';
+  for(var i=0;i<N;i++){
+    var s=st[i];var n=cols[i].length;
+    mediaCols+='<td style="font-family:monospace;font-size:11px;color:#c9d3ef;">'+(n>0?s.media.toFixed(3):'—')+'</td>';
+    dpCols+='<td style="font-family:monospace;font-size:11px;color:#3b9eff;">'+(n>1?s.dp.toFixed(3):'—')+'</td>';
+    var cc=n>1?(s.cv>20?'#f25c78':s.cv>10?'#f9c74f':'#00e5a0'):'#5a6a8a';
+    cvCols+='<td style="font-family:monospace;font-size:11px;color:'+cc+';font-weight:700;">'+(n>1?s.cv.toFixed(1)+'%':'—')+'</td>';
+  }
+
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    +'<title>Relatório — '+xe(op)+'</title>'
+    +'<style>'
+    +'*{box-sizing:border-box;margin:0;padding:0;}'
+    +'body{background:#0b0d12;color:#c9d3ef;font-family:"Barlow Condensed",sans-serif;padding:32px;}'
+    +'@media print{body{background:#fff!important;color:#111!important;}}'
+    +'h1{font-size:1.4rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:#00e5a0;margin-bottom:4px;}'
+    +'.sub{font-size:.7rem;color:#5a6a8a;letter-spacing:.15em;text-transform:uppercase;margin-bottom:24px;}'
+    +'.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;}'
+    +'.box{background:#11141c;border:1px solid #1d2235;border-radius:8px;padding:12px 14px;}'
+    +'.box-lbl{font-size:.58rem;color:#5a6a8a;letter-spacing:.15em;text-transform:uppercase;display:block;margin-bottom:4px;}'
+    +'.box-val{font-family:monospace;font-size:1.1rem;}'
+    +'table{width:100%;border-collapse:collapse;margin-bottom:20px;}'
+    +'thead th{background:rgba(255,255,255,.04);padding:8px 6px;text-align:center;border-bottom:1px solid #1d2235;}'
+    +'tbody td{padding:6px 6px;text-align:center;border-bottom:1px solid rgba(29,34,53,.7);}'
+    +'.section{font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;color:#5a6a8a;margin-bottom:8px;display:flex;align-items:center;gap:6px;}'
+    +'.section::before{content:"";width:2px;height:11px;background:#00e5a0;border-radius:2px;display:inline-block;}'
+    +'.footer{font-size:.62rem;color:#2a3448;letter-spacing:.1em;text-align:center;margin-top:32px;text-transform:uppercase;}'
+    +'@media print{'
+    +'.no-print{display:none!important;}'
+    +'body{padding:16px;background:#fff!important;color:#000!important;}'
+    +'h1{color:#007a55!important;} .sub,.section{color:#555!important;}'
+    +'.box{background:#f5f5f5!important;border-color:#ddd!important;}'
+    +'table thead th{background:#eee!important;}'
+    +'}'
+    +'</style></head><body>'
+    +'<h1>&#9201; Relatório de Tempo Padrão</h1>'
+    +'<div class="sub">'+xe(op)+' &nbsp;·&nbsp; '+agora+' &nbsp;·&nbsp; Tolerância: '+tol+'%</div>'
+    +'<div class="no-print" style="margin-bottom:20px;">'
+    +'<button onclick="window.print()" style="background:#00e5a0;color:#0b0d12;font-weight:700;font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;padding:10px 20px;border-radius:8px;border:none;cursor:pointer;margin-right:8px;">&#128424; Imprimir / Salvar PDF</button>'
+    +'<button onclick="window.close()" style="background:transparent;color:#5a6a8a;font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;padding:10px 20px;border-radius:8px;border:1px solid #1d2235;cursor:pointer;">Fechar</button>'
+    +'</div>'
+    +'<div class="section" style="margin-bottom:12px;">Resultados</div>'
+    +'<div class="grid">'
+    +'<div class="box"><span class="box-lbl">Registros</span><div class="box-val" style="color:#c9d3ef;">'+document.getElementById('sRegs').textContent+'</div></div>'
+    +'<div class="box"><span class="box-lbl">Tempo Total</span><div class="box-val" style="color:#3b9eff;">'+document.getElementById('sTotal').textContent+'</div></div>'
+    +'<div class="box"><span class="box-lbl">Tempo de Ciclo</span><div class="box-val" style="color:#ff7043;">'+document.getElementById('sCiclo').textContent+'</div></div>'
+    +'<div class="box"><span class="box-lbl">Peças / Hora</span><div class="box-val" style="color:#00e5a0;">'+document.getElementById('sPH').textContent+'</div></div>'
+    +'<div class="box"><span class="box-lbl">Peças / Dia (8.8h)</span><div class="box-val" style="color:#3b9eff;">'+document.getElementById('sPD').textContent+'</div></div>'
+    +'<div class="box"><span class="box-lbl">Tolerância</span><div class="box-val" style="color:#c9d3ef;">'+document.getElementById('sTol').textContent+'</div></div>'
+    +'</div>'
+    +(ml>0
+      ? '<div class="section" style="margin-bottom:12px;">Tabela de Registros</div>'
+        +'<table><thead><tr>'+thCols+'</tr></thead><tbody>'
+        +tabelaRows
+        +'<tr style="border-top:2px solid #1d2235;">'+mediaCols+'</tr>'
+        +'<tr>'+dpCols+'</tr>'
+        +'<tr>'+cvCols+'</tr>'
+        +'</tbody></table>'
+      : '<p style="color:#5a6a8a;font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;">Nenhum registro coletado</p>')
+    +'<div class="footer">Gerado por Cronômetro Industrial · '+agora+'</div>'
+    +'</body></html>';
+
+  var w=window.open('','_blank','width=900,height=700');
+  if(!w){toast('Permita pop-ups para gerar o PDF');return;}
+  w.document.open();w.document.write(html);w.document.close();
+  toast('PDF aberto — use Imprimir para salvar');
+}
 function dl(blob,nome){var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=nome;a.click();URL.revokeObjectURL(a.href);}
 function slug(s){return(s||'x').toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'').slice(0,24);}
 var _tt;
