@@ -539,7 +539,7 @@ function totalRegs(){return cols.reduce(function(a,c){return a+c.length;},0);}
 function abrirCam(facing){
   camFacing=facing;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast('Câmera não suportada');return;}
-  navigator.mediaDevices.getUserMedia({video:{facingMode:facing,width:{ideal:1280},height:{ideal:720}},audio:true})
+  navigator.mediaDevices.getUserMedia({video: { facingMode: facing, width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 } }}},audio:false})
     .then(function(stream){
       camStream=stream;
       var vid=document.getElementById('camVideo');vid.srcObject=stream;vid.style.display='block';
